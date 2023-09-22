@@ -27,10 +27,15 @@ fi
 
 # Check if rclone is installed, and install it if not
 if ! command -v rclone &>/dev/null; then
+    wait_for_internet
     curl https://rclone.org/install.sh | sudo bash
 fi
 
-# Check if fbi is installed, and install it if not
-if ! command -v fbi &>/dev/null; then
-    sudo apt-get install -y fbi
-fi
+# Initial synchronization and display
+sync_and_display
+
+while true; do
+    # Check for changes and sync every 1hr
+    sleep 3600
+    sync_and_display
+done
