@@ -1,4 +1,10 @@
 #!/bin/bash
+wait_for_internet() {
+    while ! ping -c 1 google.com &>/dev/null; do
+        echo "Waiting for internet connection..."
+        sleep 5  # Adjust the interval as needed
+    done
+}
 
 # Check if rclone is installed, and install it if not
 if ! command -v rclone &>/dev/null; then
