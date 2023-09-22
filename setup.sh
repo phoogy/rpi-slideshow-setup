@@ -18,6 +18,13 @@ sync_and_display() {
     sudo fbi -T 1 -t 10 -a --noverbose "$DESTINATION_PATH"/*
 }
 
+# Check if fbi is installed, and install it if not
+if ! command -v fbi &>/dev/null; then
+    wait_for_internet
+    sudo apt-get update
+    sudo apt-get install -y fbi
+fi
+
 # Check if rclone is installed, and install it if not
 if ! command -v rclone &>/dev/null; then
     curl https://rclone.org/install.sh | sudo bash
