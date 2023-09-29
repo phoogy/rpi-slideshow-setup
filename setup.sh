@@ -1,8 +1,9 @@
 #!/bin/bash
-
-SERVICE_PATH="/etc/systemd/system/slideshow.service"
+SERVICE_FILENAME="slideshow.service"
+SERVICE_PATH="/etc/systemd/system/"
 SERVICE_URL="https://github.com/phoogy/rpi-slideshow-setup/raw/main/slideshow.service"
-SETUP_PATH="~/setup.sh"
+SETUP_FILENAME="setup.sh"
+SETUP_PATH="~/"
 SETUP_URL="https://github.com/phoogy/rpi-slideshow-setup/raw/main/setup.sh"
 RCLONE_URL="https://rclone.org/install.sh"
 SOURCE_FOLDER="slideshow:"
@@ -16,15 +17,17 @@ sync_and_display() {
 }
 
 # Download the setup.sh file
-if ! [ -f "$SETUP_PATH" ]; then
+if ! [ -f "$SETUP_PATH/$SETUP_FILENAME" ]; then
     echo "Downloading setup.sh"
-    curl -o "$SETUP_PATH" "$SETUP_URL"
+    cd "$SETUP_PATH"
+    curl -L -o "$SETUP_FILENAME" "$SETUP_URL"
 fi
 
 # Setup the slideshow.service
-if ! [ -f "$SERVICE_PATH" ]; then
+if ! [ -f "$SERVICE_PATH/$SERVICE_FILENAME" ]; then
     echo "Downloading slideshow.service"
-    sudo curl -o "$SERVICE_PATH" "$SETUP_URL"
+    cd "$SERVICE_PATH"
+    sudo curl -L -o "$SERVICE_FILENAME" "$SERVICE_URL"
     echo "Setting up systemctl slideshow.service"
     sudo systemctl daemon-reload
     sudo systemctl enable slideshow.service
@@ -43,15 +46,26 @@ if ! command -v rclone &>/dev/null; then
     echo "Downloading rclone"
     curl "$RCLONE_URL" | sudo bash
     echo "Automatic setup part done."
-    echo "You will need to run rclone config to fix config. See google doc for more details."
-    echo "Don't forget to change the wifi if you haven't already!"
+    echo "You will need to run rclone config to setup config."
 else
-    # Initial synchronization and display
-    sync_and_display
 
-    while true; do
-        # Check for changes and sync every 1hr
-        sleep 3600
+    # Last check before running
+    if ! [ -f "$SETUP_PATH/$SETUP_FILENAME" ]; then
+        echo "Setup file does not exist"
+    elif ! [ -f "$SERVICE_PATH/$SERVICE_FILENAME" ]; then
+        echo "Service file does not exist"
+    elif ! command -v fbi &>/dev/null; then
+        echo "rclone isnt installed"
+    elif ! command -v fbi &>/dev/null; then
+        echo "fbi not installed"
+    else
+        # Initial synchronization and display
         sync_and_display
-    done
+
+        while true; do
+            # Check for changes and sync every 1hr
+            sleep 3600
+            sync_and_display
+        done
+    fi
 fi
