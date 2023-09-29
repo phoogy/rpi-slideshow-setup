@@ -3,7 +3,7 @@ SERVICE_FILENAME="slideshow.service"
 SERVICE_PATH="/etc/systemd/system"
 SERVICE_URL="https://github.com/phoogy/rpi-slideshow-setup/raw/main/slideshow.service"
 SETUP_FILENAME="setup.sh"
-SETUP_PATH="$HOME"
+SETUP_PATH="/usr/local/bin"
 SETUP_URL="https://github.com/phoogy/rpi-slideshow-setup/raw/main/setup.sh"
 RCLONE_URL="https://rclone.org/install.sh"
 SOURCE_FOLDER="slideshow:"
@@ -19,9 +19,7 @@ sync_and_display() {
 # Download the setup.sh file
 if ! [ -f "$SETUP_PATH/$SETUP_FILENAME" ]; then
     echo "Downloading setup.sh"
-    cd "$SETUP_PATH"
-    curl -L -o "$SETUP_FILENAME" "$SETUP_URL"
-    chmod a+x setup.sh
+    cd "$SETUP_PATH" && sudo curl -L -o "$SETUP_FILENAME" "$SETUP_URL" && sudo chmod +x setup.sh
 fi
 
 # Setup the slideshow.service
@@ -63,6 +61,7 @@ else
         echo "rclone config has not been setup yet. please run rclone config"
     else
         # Initial synchronization and display
+        echo "running initial sync_and_display"
         sync_and_display
 
         while true; do

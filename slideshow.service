@@ -5,7 +5,7 @@ After=network.target
 [Service]
 Type=simple
 User=pi
-ExecStart=/bin/bash ~/setup.sh
+ExecStart=/bin/bash /usr/local/bin/setup.sh
 Restart=always
 
 [Install]
