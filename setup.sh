@@ -1,13 +1,13 @@
 #!/bin/bash
 SERVICE_FILENAME="slideshow.service"
-SERVICE_PATH="/etc/systemd/system/"
+SERVICE_PATH="/etc/systemd/system"
 SERVICE_URL="https://github.com/phoogy/rpi-slideshow-setup/raw/main/slideshow.service"
 SETUP_FILENAME="setup.sh"
-SETUP_PATH="~/"
+SETUP_PATH="$HOME"
 SETUP_URL="https://github.com/phoogy/rpi-slideshow-setup/raw/main/setup.sh"
 RCLONE_URL="https://rclone.org/install.sh"
 SOURCE_FOLDER="slideshow:"
-DESTINATION_PATH="~/slideshow"
+DESTINATION_PATH="$HOME/slideshow"
 
 # Function to sync and display images
 sync_and_display() {
@@ -21,6 +21,7 @@ if ! [ -f "$SETUP_PATH/$SETUP_FILENAME" ]; then
     echo "Downloading setup.sh"
     cd "$SETUP_PATH"
     curl -L -o "$SETUP_FILENAME" "$SETUP_URL"
+    chmod a+x setup.sh
 fi
 
 # Setup the slideshow.service
@@ -58,6 +59,8 @@ else
         echo "rclone isnt installed"
     elif ! command -v fbi &>/dev/null; then
         echo "fbi not installed"
+    elif ! [ -f "$HOME/.config/rclone/rclone.conf" ]; then
+        echo "rclone config has not been setup yet. please run rclone config"
     else
         # Initial synchronization and display
         sync_and_display
