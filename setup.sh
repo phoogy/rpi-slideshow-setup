@@ -54,22 +54,13 @@ if ! [ -f "$SERVICE_PATH/$SERVICE_FILENAME" ]; then
 fi
 
 # Check if fbi is installed, and install it if not
-# if ! command -v fbi &>/dev/null; then
-#     echo "Downloading fbi"
-#     if [ ! -f "$flag_file" ]
-#     then
-#         sudo apt-get update && touch "$flag_file"
-#     fi
-#     sudo apt-get install -y fbi
-# fi
-
-if ! command -v feh &>/dev/null; then
-    echo "Downloading feh"
+if ! command -v fbi &>/dev/null; then
+    echo "Downloading fbi"
     if [ ! -f "$flag_file" ]
     then
         sudo apt-get update && touch "$flag_file"
     fi
-    sudo apt-get install -y feh
+    sudo apt-get install -y fbi
 fi
 
 # Check if inotify-tools is installed, and install if not
@@ -96,10 +87,8 @@ else
         echo "Service file does not exist"
     elif ! command -v rclone &>/dev/null; then
         echo "rclone isnt installed"
-    # elif ! command -v fbi &>/dev/null; then
-    #     echo "fbi not installed"
-    elif ! command -v feh &>/dev/null; then
-        echo "feh not installed"
+    elif ! command -v fbi &>/dev/null; then
+        echo "fbi not installed"
     elif ! [ -f "$HOME/.config/rclone/rclone.conf" ]; then
         echo "rclone config has not been setup yet. please run rclone config if it wasnt run"
     else
@@ -168,31 +157,70 @@ else
             done
         ) & REBOOT_PID=$!
 
-        # Set a trap to stop the sync process and remove the lock file when the script is terminated
-        # trap "kill $SYNC_PID; kill $UPDATE_PID; kill $REBOOT_PID; rm -f /tmp/rclone_sync.lock; sudo killall fbi" EXIT
-        trap "kill $SYNC_PID; kill $UPDATE_PID; kill $REBOOT_PID; rm -f /tmp/rclone_sync.lock; sudo killall feh" EXIT
-
-        # Check if the directory does not exist
-        if [ ! -d "$DESTINATION_PATH/slideshow" ]; then
-            # Create the directory
-            mkdir -p "$DESTINATION_PATH/slideshow"
-        fi
-
-        # sudo killall fbi
-        # sudo fbi -T 1 -t 10 -a --noverbose "$DESTINATION_PATH"/*
-        sudo killall feh
-        feh -Y -x -q -D "$SLIDESHOW_DELAY" -B black -F -Z -r --auto-rotate "$DESTINATION_PATH"/*
-
-        # Monitor the directory for new files, deletions, and modifications
-        inotifywait -m -e create -e moved_to -e delete -e modify "$DESTINATION_PATH" | while read path action file; do
-            echo "Detected event: $file, action: $action"
-            if [[ "$file" =~ .*\.(jpg|jpeg|png|gif)$ ]]; then
-                echo "Restarting with new images..."
-                # sudo killall fbi
-                # sudo fbi -T 1 -t "$SLIDESHOW_DELAY" -a --noverbose "$DESTINATION_PATH"/*
-                sudo killall feh
-                feh -Y -x -q -D "$SLIDESHOW_DELAY" -B black -F -Z -r --auto-rotate "$DESTINATION_PATH"/*
+        FBI_PID=
+        (
+            # Check if the directory does not exist
+            if [ ! -d "$DESTINATION_PATH/slideshow" ]; then
+                # Create the directory
+                mkdir -p "$DESTINATION_PATH/slideshow"
             fi
+
+            sudo killall fbi
+            sudo fbi -T 1 -t 10 -a --noverbose "$DESTINATION_PATH"/*
+
+            # Monitor the directory for new files, deletions, and modifications
+            inotifywait -m -e create -e moved_to -e delete -e modify "$DESTINATION_PATH" | while read path action file; do
+                echo "Detected event: $file, action: $action"
+                if [[ "$file" =~ .*\.(jpg|jpeg|png|gif)$ ]]; then
+                    echo "Restarting with new images..."
+                    sudo killall fbi
+                    sudo fbi -T 1 -t "$SLIDESHOW_DELAY" -a --noverbose "$DESTINATION_PATH"/*
+                fi
+            done
+
+        ) & FBI_PID=$!
+
+        
+        # Set a trap to stop the sync process and remove the lock file when the script is terminated
+        trap "kill $SYNC_PID; kill $UPDATE_PID; kill $REBOOT_PID; kill $FBI_PID; rm -f /tmp/rclone_sync.lock; sudo killall fbi" EXIT
+
+
+        #loop to keep the script running and listen for key strokes 1 2 3 and 4 to change the rotation of the monitor
+        while true; do
+            read -n 1 key
+            case $key in
+                $'\x1b[A')
+                    echo "Changing rotation to 0"
+                    sudo bash -c 'echo "display_hdmi_rotate=0" >> /boot/firmware/config.txt'
+                    sudo reboot
+                    ;;
+                $'\x1b[C') 
+                    echo "Changing rotation to 90"
+                    sudo bash -c 'echo "display_hdmi_rotate=1" >> /boot/firmware/config.txt'
+                    sudo reboot
+                    ;;
+                $'\x1b[B')
+                    echo "Changing rotation to 180"
+                    sudo bash -c 'echo "display_hdmi_rotate=2" >> /boot/firmware/config.txt'
+                    sudo reboot
+                    ;;
+                $'\x1b[D')
+                    echo "Changing rotation to 270"
+                    sudo bash -c 'echo "display_hdmi_rotate=3" >> /boot/firmware/config.txt'
+                    sudo reboot
+                    ;;
+                r)
+                    echo "Syncing files"
+                    flock -n 200 rclone sync "$SOURCE_FOLDER" "$DESTINATION_PATH"
+                    ;;
+                q)
+                    echo "Exiting script"
+                    exit 0
+                    ;;
+                *)
+                    ;;
+            esac
         done
+        
     fi
 fi
