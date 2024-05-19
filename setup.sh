@@ -54,13 +54,22 @@ if ! [ -f "$SERVICE_PATH/$SERVICE_FILENAME" ]; then
 fi
 
 # Check if fbi is installed, and install it if not
-if ! command -v fbi &>/dev/null; then
-    echo "Downloading fbi"
+# if ! command -v fbi &>/dev/null; then
+#     echo "Downloading fbi"
+#     if [ ! -f "$flag_file" ]
+#     then
+#         sudo apt-get update && touch "$flag_file"
+#     fi
+#     sudo apt-get install -y fbi
+# fi
+
+if ! command -v feh &>/dev/null; then
+    echo "Downloading feh"
     if [ ! -f "$flag_file" ]
     then
         sudo apt-get update && touch "$flag_file"
     fi
-    sudo apt-get install -y fbi
+    sudo apt-get install -y feh
 fi
 
 # Check if inotify-tools is installed, and install if not
@@ -85,10 +94,12 @@ else
         echo "Setup file does not exist"
     elif ! [ -f "$SERVICE_PATH/$SERVICE_FILENAME" ]; then
         echo "Service file does not exist"
-    elif ! command -v fbi &>/dev/null; then
+    elif ! command -v rclone &>/dev/null; then
         echo "rclone isnt installed"
-    elif ! command -v fbi &>/dev/null; then
-        echo "fbi not installed"
+    # elif ! command -v fbi &>/dev/null; then
+    #     echo "fbi not installed"
+    elif ! command -v feh &>/dev/null; then
+        echo "feh not installed"
     elif ! [ -f "$HOME/.config/rclone/rclone.conf" ]; then
         echo "rclone config has not been setup yet. please run rclone config if it wasnt run"
     else
@@ -108,11 +119,11 @@ else
         (
             
             while true; do
-                # Check for changes and sync every 1 min
-                sleep 60
-
                 # Try to acquire the lock and run the sync
                 flock -n 200 rclone sync "$SOURCE_FOLDER" "$DESTINATION_PATH"
+
+                # Check for changes and sync every 1 min
+                sleep 60
             done
         ) & SYNC_PID=$!
 
@@ -158,25 +169,29 @@ else
         ) & REBOOT_PID=$!
 
         # Set a trap to stop the sync process and remove the lock file when the script is terminated
-        trap "kill $SYNC_PID; kill $UPDATE_PID; kill $REBOOT_PID; rm -f /tmp/rclone_sync.lock; sudo killall fbi" EXIT
+        # trap "kill $SYNC_PID; kill $UPDATE_PID; kill $REBOOT_PID; rm -f /tmp/rclone_sync.lock; sudo killall fbi" EXIT
+        trap "kill $SYNC_PID; kill $UPDATE_PID; kill $REBOOT_PID; rm -f /tmp/rclone_sync.lock; sudo killall feh" EXIT
 
-        sudo killall fbi
-        sudo fbi -T 1 -t 10 -a --noverbose "$DESTINATION_PATH"/*
-
-        # Monitor the directory for new files, deletions, and modifications
         # Check if the directory does not exist
         if [ ! -d "$DESTINATION_PATH/slideshow" ]; then
             # Create the directory
             mkdir -p "$DESTINATION_PATH/slideshow"
         fi
 
+        # sudo killall fbi
+        # sudo fbi -T 1 -t 10 -a --noverbose "$DESTINATION_PATH"/*
+        sudo killall feh
+        feh -Y -x -q -D "$SLIDESHOW_DELAY" -B black -F -Z -r --auto-rotate "$DESTINATION_PATH"/*
+
+        # Monitor the directory for new files, deletions, and modifications
         inotifywait -m -e create -e moved_to -e delete -e modify "$DESTINATION_PATH" | while read path action file; do
             echo "Detected event: $file, action: $action"
-            sleep 1
             if [[ "$file" =~ .*\.(jpg|jpeg|png|gif)$ ]]; then
-                echo "Restarting fbi with new images..."
-                sudo killall fbi
-                sudo fbi -T 1 -t "$SLIDESHOW_DELAY" -a --noverbose "$DESTINATION_PATH"/*
+                echo "Restarting with new images..."
+                # sudo killall fbi
+                # sudo fbi -T 1 -t "$SLIDESHOW_DELAY" -a --noverbose "$DESTINATION_PATH"/*
+                sudo killall feh
+                feh -Y -x -q -D "$SLIDESHOW_DELAY" -B black -F -Z -r --auto-rotate "$DESTINATION_PATH"/*
             fi
         done
     fi
