@@ -75,15 +75,6 @@ else
         echo "rclone config has not been setup yet. please run rclone config if it wasnt run"
     else
         echo "Starting the slideshow..."
-        
-        # Check if lock file exists
-        if [ -f /tmp/rclone_sync.lock ]; then
-            echo "Lock file exists, script is already running"
-            exit 1
-        fi
-
-        # Create a lock file
-        exec 200>/tmp/rclone_sync.lock
 
         # Start a background process for syncing
         SYNC_PID=
@@ -91,7 +82,7 @@ else
             
             while true; do
                 # Try to acquire the lock and run the sync
-                flock -n 200 rclone sync "$SOURCE_FOLDER" "$DESTINATION_PATH"
+                rclone sync "$SOURCE_FOLDER" "$DESTINATION_PATH"
 
                 # Check for changes and sync every 1 min
                 sleep 60
@@ -115,38 +106,38 @@ else
             done
         ) & REBOOT_PID=$!
 
-        FBI_PID=
+        # Start a background process that checks if fbi is running every 10 seconds
+        FBI_CHECK_PID=
         (
-            # Check if the directory does not exist
-            if [ ! -d "$DESTINATION_PATH/slideshow" ]; then
-                # Create the directory
-                mkdir -p "$DESTINATION_PATH/slideshow"
-            fi
-
-            sudo killall fbi
-            sudo fbi -T 1 -t 10 -a --noverbose "$DESTINATION_PATH"/*
-
-            # Monitor the directory for new files, deletions, and modifications
-            inotifywait -m -e create -e moved_to -e delete -e modify "$DESTINATION_PATH" | while read path action file; do
-                echo "Detected event: $file, action: $action"
-                if [[ "$file" =~ .*\.(jpg|jpeg|png|gif)$ ]]; then
-                    echo "Restarting with new images..."
-                    sudo killall fbi
+            while true; do
+                if ! pgrep -x "fbi" > /dev/null; then
+                    echo "fbi is not running, starting it..."
                     sudo fbi -T 1 -t "$SLIDESHOW_DELAY" -a --noverbose "$DESTINATION_PATH"/*
                 fi
+                sleep 10
             done
+        ) & FBI_CHECK_PID=$!
 
-        ) & FBI_PID=$!
-
-        
         # Set a trap to stop the sync process and remove the lock file when the script is terminated
-        trap "kill $SYNC_PID; kill $REBOOT_PID; kill $FBI_PID; rm -f /tmp/rclone_sync.lock; sudo killall fbi" EXIT
+        trap "kill $SYNC_PID; kill $REBOOT_PID; kill $FBI_CHECK_PID; sudo killall fbi" EXIT
 
+        # Check if the directory does not exist
+        if [ ! -d "$DESTINATION_PATH" ]; then
+            # Create the directory
+            mkdir -p "$DESTINATION_PATH"
+        fi
 
-        #loop to keep script running
-        while true; do
-            sleep 1
-        done
-        
+        sudo killall fbi
+        sudo fbi -T 1 -t "$SLIDESHOW_DELAY" -a --noverbose "$DESTINATION_PATH"/*
+
+        # Monitor the directory for new files, deletions, and modifications
+        inotifywait -m -e create -e moved_to -e delete -e modify "$DESTINATION_PATH" | while read path action file; do
+            echo "Detected event: $file, action: $action"
+            if [[ "$file" =~ .*\.(jpg|jpeg|png|gif)$ ]]; then
+                echo "Restarting with new images..."
+                sudo killall fbi
+                sudo fbi -T 1 -t "$SLIDESHOW_DELAY" -a --noverbose "$DESTINATION_PATH"/*
+            fi
+        done  
     fi
 fi
