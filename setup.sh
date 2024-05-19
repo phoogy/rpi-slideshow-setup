@@ -22,24 +22,24 @@ trap cleanup EXIT
 if ! [ -f "$SETUP_PATH/$SETUP_FILENAME" ]; then
     echo "Downloading setup.sh"
     cd "$SETUP_PATH" && sudo curl -L -o "$SETUP_FILENAME" "$SETUP_URL" && sudo chmod +x setup.sh
-else
-    # Download the setup.sh file to a temporary location
-    TEMP_FILE=$(mktemp)
-    trap "rm -f $TEMP_FILE" EXIT
-    curl -L -o "$TEMP_FILE" "$SETUP_URL"
+# else
+    # # Download the setup.sh file to a temporary location
+    # TEMP_FILE=$(mktemp)
+    # trap "rm -f $TEMP_FILE" EXIT
+    # curl -L -o "$TEMP_FILE" "$SETUP_URL"
 
-    # Compare the temporary file with the local file
-    if ! cmp -s "$TEMP_FILE" "$SETUP_PATH/$SETUP_FILENAME"; then
-        echo "Updating setup.sh"
-        sudo mv "$TEMP_FILE" "$SETUP_PATH/$SETUP_FILENAME"
-        sudo chmod +x "$SETUP_PATH/$SETUP_FILENAME"
+    # # Compare the temporary file with the local file
+    # if ! cmp -s "$TEMP_FILE" "$SETUP_PATH/$SETUP_FILENAME"; then
+    #     echo "Updating setup.sh"
+    #     sudo mv "$TEMP_FILE" "$SETUP_PATH/$SETUP_FILENAME"
+    #     sudo chmod +x "$SETUP_PATH/$SETUP_FILENAME"
 
-        # End this script and call the updated one
-        exec "$SETUP_PATH/$SETUP_FILENAME"
-    else
-        echo "setup.sh is up to date"
-        rm "$TEMP_FILE"
-    fi
+    #     # End this script and call the updated one
+    #     exec "$SETUP_PATH/$SETUP_FILENAME"
+    # else
+    #     echo "setup.sh is up to date"
+    #     rm "$TEMP_FILE"
+    # fi
 fi
 
 # Setup the slideshow.service
@@ -124,19 +124,19 @@ else
                 # Sleep for 1 hour
                 sleep 3600
 
-                # Download the remote setup.sh to a temporary file
-                TEMP_FILE=$(mktemp)
-                curl -s "$REMOTE_SETUP_FILE" -o "$TEMP_FILE"
+                # # Download the remote setup.sh to a temporary file
+                # TEMP_FILE=$(mktemp)
+                # curl -s "$REMOTE_SETUP_FILE" -o "$TEMP_FILE"
 
-                # If the local and remote files are different, update the local file
-                if ! cmp -s "$TEMP_FILE" "$SETUP_PATH/$SETUP_FILENAME"; then
-                    echo "Updating setup.sh"
-                    sudo mv "$TEMP_FILE" "$SETUP_PATH/$SETUP_FILENAME"
-                    sudo chmod +x "$SETUP_PATH/$SETUP_FILENAME"
-                else
-                    echo "setup.sh is up to date"
-                    rm "$TEMP_FILE"
-                fi
+                # # If the local and remote files are different, update the local file
+                # if ! cmp -s "$TEMP_FILE" "$SETUP_PATH/$SETUP_FILENAME"; then
+                #     echo "Updating setup.sh"
+                #     sudo mv "$TEMP_FILE" "$SETUP_PATH/$SETUP_FILENAME"
+                #     sudo chmod +x "$SETUP_PATH/$SETUP_FILENAME"
+                # else
+                #     echo "setup.sh is up to date"
+                #     rm "$TEMP_FILE"
+                # fi
             done
         ) & UPDATE_PID=$!
 
@@ -185,7 +185,7 @@ else
         trap "kill $SYNC_PID; kill $UPDATE_PID; kill $REBOOT_PID; kill $FBI_PID; rm -f /tmp/rclone_sync.lock; sudo killall fbi" EXIT
 
 
-        #loop to keep script running but with a way to kill the scrip via ssh
+        #loop to keep script running
         while true; do
             sleep 1
         done
