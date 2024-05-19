@@ -185,41 +185,9 @@ else
         trap "kill $SYNC_PID; kill $UPDATE_PID; kill $REBOOT_PID; kill $FBI_PID; rm -f /tmp/rclone_sync.lock; sudo killall fbi" EXIT
 
 
-        #loop to keep the script running and listen for key strokes 1 2 3 and 4 to change the rotation of the monitor
+        #loop to keep script running but with a way to kill the scrip via ssh
         while true; do
-            read -n 1 key
-            case $key in
-                $'\x1b[A')
-                    echo "Changing rotation to 0"
-                    sudo bash -c 'echo "display_hdmi_rotate=0" >> /boot/firmware/config.txt'
-                    sudo reboot
-                    ;;
-                $'\x1b[C') 
-                    echo "Changing rotation to 90"
-                    sudo bash -c 'echo "display_hdmi_rotate=1" >> /boot/firmware/config.txt'
-                    sudo reboot
-                    ;;
-                $'\x1b[B')
-                    echo "Changing rotation to 180"
-                    sudo bash -c 'echo "display_hdmi_rotate=2" >> /boot/firmware/config.txt'
-                    sudo reboot
-                    ;;
-                $'\x1b[D')
-                    echo "Changing rotation to 270"
-                    sudo bash -c 'echo "display_hdmi_rotate=3" >> /boot/firmware/config.txt'
-                    sudo reboot
-                    ;;
-                r)
-                    echo "Syncing files"
-                    flock -n 200 rclone sync "$SOURCE_FOLDER" "$DESTINATION_PATH"
-                    ;;
-                q)
-                    echo "Exiting script"
-                    exit 0
-                    ;;
-                *)
-                    ;;
-            esac
+            sleep 1
         done
         
     fi
