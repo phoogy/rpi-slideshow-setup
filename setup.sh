@@ -30,8 +30,8 @@ else
     # Compare the temporary file with the local file
     if ! cmp -s "$TEMP_FILE" "$SETUP_PATH/$SETUP_FILENAME"; then
         echo "Updating setup.sh"
-        mv "$TEMP_FILE" "$SETUP_PATH/$SETUP_FILENAME"
-        chmod +x "$SETUP_PATH/$SETUP_FILENAME"
+        sudo mv "$TEMP_FILE" "$SETUP_PATH/$SETUP_FILENAME"
+        sudo chmod +x "$SETUP_PATH/$SETUP_FILENAME"
 
         # End this script and call the updated one
         exec "$SETUP_PATH/$SETUP_FILENAME"
