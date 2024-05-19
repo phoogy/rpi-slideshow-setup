@@ -8,6 +8,7 @@ SETUP_URL="https://raw.githubusercontent.com/phoogy/rpi-slideshow-setup/develop/
 RCLONE_URL="https://rclone.org/install.sh"
 SOURCE_FOLDER="slideshow:"
 DESTINATION_PATH="$HOME/slideshow"
+SLIDESHOW_DELAY=3
 
 flag_file="/var/tmp/apt-get-update-flag"
 
@@ -91,7 +92,7 @@ else
     elif ! [ -f "$HOME/.config/rclone/rclone.conf" ]; then
         echo "rclone config has not been setup yet. please run rclone config if it wasnt run"
     else
-        echo "Running Sync"
+        echo "Starting the slideshow..."
         
         # Check if lock file exists
         if [ -f /tmp/rclone_sync.lock ]; then
@@ -115,19 +116,67 @@ else
             done
         ) & SYNC_PID=$!
 
+        # Start a background process for checking updates
+        UPDATE_PID=
+        (
+
+            while true; do
+                # Sleep for 1 hour
+                sleep 3600
+
+                # Download the remote setup.sh to a temporary file
+                TEMP_FILE=$(mktemp)
+                curl -s "$REMOTE_SETUP_FILE" -o "$TEMP_FILE"
+
+                # If the local and remote files are different, update the local file
+                if ! cmp -s "$TEMP_FILE" "$SETUP_PATH/$SETUP_FILENAME"; then
+                    echo "Updating setup.sh"
+                    sudo mv "$TEMP_FILE" "$SETUP_PATH/$SETUP_FILENAME"
+                    sudo chmod +x "$SETUP_PATH/$SETUP_FILENAME"
+                else
+                    echo "setup.sh is up to date"
+                    rm "$TEMP_FILE"
+                fi
+            done
+        ) & UPDATE_PID=$!
+
+        REBOOT_PID=
+        (
+
+            while true; do
+                # Sleep for 1 hour
+                sleep 3600
+
+                # Get the current hour
+                CURRENT_HOUR=$(date +%H)
+
+                # Reboot the system at midnight
+                if [ "$CURRENT_HOUR" -eq 00 ]; then
+                    sudo reboot
+                fi
+            done
+        ) & REBOOT_PID=$!
+
         # Set a trap to stop the sync process and remove the lock file when the script is terminated
-        trap "kill $SYNC_PID; rm -f /tmp/rclone_sync.lock; sudo killall fbi" EXIT
+        trap "kill $SYNC_PID; kill $UPDATE_PID; kill $REBOOT_PID; rm -f /tmp/rclone_sync.lock; sudo killall fbi" EXIT
 
         sudo killall fbi
         sudo fbi -T 1 -t 10 -a --noverbose "$DESTINATION_PATH"/*
 
         # Monitor the directory for new files, deletions, and modifications
+        # Check if the directory does not exist
+        if [ ! -d "$DESTINATION_PATH/slideshow" ]; then
+            # Create the directory
+            mkdir -p "$DESTINATION_PATH/slideshow"
+        fi
+
         inotifywait -m -e create -e moved_to -e delete -e modify "$DESTINATION_PATH" | while read path action file; do
             echo "Detected event: $file, action: $action"
+            sleep 1
             if [[ "$file" =~ .*\.(jpg|jpeg|png|gif)$ ]]; then
                 echo "Restarting fbi with new images..."
                 sudo killall fbi
-                sudo fbi -T 1 -t 10 -a --noverbose "$DESTINATION_PATH"/*
+                sudo fbi -T 1 -t "$SLIDESHOW_DELAY" -a --noverbose "$DESTINATION_PATH"/*
             fi
         done
     fi
