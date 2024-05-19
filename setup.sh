@@ -9,6 +9,14 @@ RCLONE_URL="https://rclone.org/install.sh"
 SOURCE_FOLDER="slideshow:"
 DESTINATION_PATH="$HOME/slideshow"
 
+flag_file="/var/tmp/apt-get-update-flag"
+
+# Function to clean up on exit
+cleanup() {
+    rm -f "$flag_file"
+}
+trap cleanup EXIT
+
 # Download the setup.sh file
 if ! [ -f "$SETUP_PATH/$SETUP_FILENAME" ]; then
     echo "Downloading setup.sh"
@@ -33,8 +41,6 @@ else
     fi
 fi
 
-sudo apt-get update
-
 # Setup the slideshow.service
 if ! [ -f "$SERVICE_PATH/$SERVICE_FILENAME" ]; then
     echo "Downloading slideshow.service"
@@ -49,12 +55,20 @@ fi
 # Check if fbi is installed, and install it if not
 if ! command -v fbi &>/dev/null; then
     echo "Downloading fbi"
+    if [ ! -f "$flag_file" ]
+    then
+        sudo apt-get update && touch "$flag_file"
+    fi
     sudo apt-get install -y fbi
 fi
 
 # Check if inotify-tools is installed, and install if not
 if ! command -v inotifywait &>/dev/null; then
     echo "Downloading inotify-tools"
+    if [ ! -f "$flag_file" ]
+    then
+        sudo apt-get update && touch "$flag_file"
+    fi
     sudo apt-get install -y inotify-tools
 fi
 
@@ -76,7 +90,6 @@ else
         echo "fbi not installed"
     elif ! [ -f "$HOME/.config/rclone/rclone.conf" ]; then
         echo "rclone config has not been setup yet. please run rclone config if it wasnt run"
-        rclone config
     else
         echo "Running Sync"
         
@@ -92,6 +105,7 @@ else
         # Start a background process for syncing
         SYNC_PID=
         (
+            
             while true; do
                 # Check for changes and sync every 1 min
                 sleep 60
