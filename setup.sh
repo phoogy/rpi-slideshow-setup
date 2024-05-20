@@ -1,10 +1,10 @@
 #!/bin/bash
 SERVICE_FILENAME="slideshow.service"
 SERVICE_PATH="/etc/systemd/system"
-SERVICE_URL="https://raw.githubusercontent.com/phoogy/rpi-slideshow-setup/develop/slideshow.service"
+SERVICE_URL="https://raw.githubusercontent.com/phoogy/rpi-slideshow-setup/main/slideshow.service"
 SETUP_FILENAME="setup.sh"
 SETUP_PATH="/usr/local/bin"
-SETUP_URL="https://raw.githubusercontent.com/phoogy/rpi-slideshow-setup/develop/setup.sh"
+SETUP_URL="https://raw.githubusercontent.com/phoogy/rpi-slideshow-setup/main/setup.sh"
 RCLONE_URL="https://rclone.org/install.sh"
 SOURCE_FOLDER="slideshow:"
 DESTINATION_PATH="$HOME/slideshow"
